@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>CEF OSR 控制台版本</title>
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+        }
+        h1 {
+            color: #00d2ff;
+            margin-bottom: 30px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            min-height: 80px;
+            word-break: break-all;
+            font-family: monospace;
+            text-align: left;
+            line-height: 1.6;
+        }
+        .info {
+            color: #888;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        .log-entry {
+            color: #00ff88;
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CEF OSR 控制台版本</h1>
+        <p style="color: #aaa;">离屏渲染 + OpenCV 处理 + JS/C++ IPC 通信</p>
+        
+        <button onclick="sendToCpp()">📤 发送消息到 C++</button>
+        <button onclick="sendWithTimestamp()">⏰ 发送时间戳</button>
+        <button onclick="clearLog()">🗑️ 清除日志</button>
+        
+        <div id="status">
+            <div>系统就绪，等待操作...</div>
+        </div>
+        
+        <div class="info">
+            ✅ CEF 离屏渲染运行中<br>
+            🔄 OpenCV 实时帧处理<br>
+            📡 IPC 通信通道已建立
+        </div>
+    </div>
+
+    <script>
+        // 日志计数器
+        var logCount = 0;
+
+        // 添加日志
+        function addLog(msg, type) {
+            logCount++;
+            var div = document.getElementById('status');
+            var entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            var time = new Date().toLocaleTimeString();
+            entry.innerHTML = '[' + time + '] ' + msg;
+            
+            div.appendChild(entry);
+            
+            // 自动滚动到底部
+            div.scrollTop = div.scrollHeight;
+            
+            // 限制日志数量
+            while (div.children.length > 50) {
+                div.removeChild(div.firstChild);
+            }
+            
+            // 同时输出到控制台
+            console.log(msg);
+        }
+
+        // 清空日志
+        function clearLog() {
+            document.getElementById('status').innerHTML = '<div>日志已清除</div>';
+            logCount = 0;
+        }
+
+        // 调用 C++ 原生函数
+        function sendToCpp() {
+            if (typeof callNative !== 'undefined') {
+                addLog('📤 发送消息到 C++...');
+                callNative("Hello from JavaScript! (count: " + logCount + ")");
+            } else {
+                addLog('❌ callNative 未定义，请确保 CEF 绑定成功');
+            }
+        }
+
+        // 发送带时间戳的消息
+        function sendWithTimestamp() {
+            if (typeof callNative !== 'undefined') {
+                var data = JSON.stringify({
+                    type: "timestamp_request",
+                    timestamp: Date.now(),
+                    message: "当前时间戳请求"
+                });
+                addLog('📤 发送时间戳请求: ' + data);
+                callNative(data);
+            } else {
+                addLog('❌ callNative 未定义');
+            }
+        }
+
+        // C++ 回调函数（由 C++ 端调用）
+        function onNativeResult(result) {
+            addLog('✅ C++ 返回: ' + result);
+			
+        }
+
+        // 页面加载完成提示
+        window.onload = function() {
+            addLog('🟢 页面加载完成');
+            setTimeout(function() {
+                if (typeof callNative !== 'undefined') {
+                    addLog('✅ CEF V8 绑定就绪');
+					sendToCpp();
+                } else {
+                    addLog('⚠️ 等待 CEF V8 绑定...');
+                }
+            }, 500);
+        };
+    </script>
+</body>
+</html>
